@@ -3,10 +3,10 @@ const express = require('express')
 const logger = require('morgan')
 const app = express()
 const {
-  fallbackHandler,
-  notFoundHandler,
-  genericErrorHandler,
-  poweredByHandler
+    fallbackHandler,
+    notFoundHandler,
+    genericErrorHandler,
+    poweredByHandler
 } = require('./handlers.js')
 
 // For deployment to Heroku, the port needs to be set using ENV, so
@@ -21,47 +21,85 @@ app.use(poweredByHandler)
 
 // --- SNAKE LOGIC GOES BELOW THIS LINE ---
 
-//  This function is called everytime your snake is entered into a game.
-//  cherrypy.request.json contains information about the game that's about to be played.
-// TODO: Use this function to decide how your snake is going to look on the board.
+// Handle POST request to '/start'
 app.post('/start', (request, response) => {
-  console.log("START");
+    // NOTE: Do something here to start the game
 
-  // Response data
-  const data = {
-    color: '#888888',
-    headType: "regular",
-    tailType: "regular"
-  }
+    // Response data
+    const data = {
+        color: '#FF0000',
+    }
 
-  return response.json(data)
+    return response.json(data)
 })
 
-// This function is called on every turn of a game. It's how your snake decides where to move.
-// Valid moves are "up", "down", "left", or "right".
-// TODO: Use the information in cherrypy.request.json to decide your next move.
+function print_game_state(gameState) {
+
+    var board = new Array(gameState.height);
+    for (var i = 0; i < board.length; i++) {
+        board[i] = new Array(gameState.width);
+        for (var c = 0; c < board[i].length; c++)
+            board[i][c] = "__";
+    }
+
+    for (const pt of gameState.food) {
+        board[pt.y][pt.x] = ' f';
+    }
+
+    for (const snake of gameState.snakes) {
+        for (const pt of snake.body)
+            board[pt.y][pt.x] = ' *';
+    }
+
+    for (const pt of gameState.you.body)
+        board[pt.y][pt.x] = ' X';
+
+    process.stdout.write(`board ${board.length}x${board[0].length}:\n`);
+    for (var y = 0; y < board.length; y++) {
+        // process.stdout.write(`${y}: `);
+        for (var x = 0; x < board[0].length; x++) {
+            process.stdout.write(board[y][x]);
+        }
+        process.stdout.write("\n");
+    }
+    // console.log(board);
+}
+
+// Handle POST request to '/move'
 app.post('/move', (request, response) => {
-  var data = request.body;
 
-  // Choose a random direction to move in
-  possible_moves = ["up", "down", "left", "right"]
-  var choice = Math.floor(Math.random() * possible_moves.length);
-  var snake_move = possible_moves[choice];
+    // console.log(request.body.board.food);
 
-  console.log("MOVE: " + snake_move);
-  return response.json({ move: snake_move })
+    var gameState = {
+        width: request.body.board.width
+        , height: request.body.board.height
+        , food: request.body.board.food
+        , snakes: request.body.board.snakes
+        , you: request.body.you
+    };
+    // console.log(gameState);
+
+    print_game_state(gameState);
+
+    // Response data
+    const data = {
+        move: 'up', // one of: ['up','down','left','right']
+    }
+
+    //   console.log(request.body.board);
+    //   console.log(request.body.you);
+
+    return response.json(data)
 })
 
-// This function is called when a game your snake was in ends.
-// It's purely for informational purposes, you don't have to make any decisions here.
 app.post('/end', (request, response) => {
-  console.log("END");
-  return response.json({ message: "ok" });
+    // NOTE: Any cleanup when a game is complete.
+    return response.json({})
 })
 
-// The Battlesnake engine calls this function to make sure your snake is working.
 app.post('/ping', (request, response) => {
-  return response.json({ message: "pong" });
+    // Used for checking if this snake is still alive.
+    return response.json({});
 })
 
 // --- SNAKE LOGIC GOES ABOVE THIS LINE ---
@@ -71,5 +109,6 @@ app.use(notFoundHandler)
 app.use(genericErrorHandler)
 
 app.listen(app.get('port'), () => {
-  console.log('Server listening on port %s', app.get('port'))
+    console.log('Server listening on port %s', app.get('port'))
 })
+
