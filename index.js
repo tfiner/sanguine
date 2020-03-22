@@ -19,7 +19,6 @@ app.use(logger('dev'))
 app.use(bodyParser.json())
 app.use(poweredByHandler)
 
-// --- SNAKE LOGIC GOES BELOW THIS LINE ---
 
 // Handle POST request to '/start'
 app.post('/start', (request, response) => {
@@ -27,11 +26,70 @@ app.post('/start', (request, response) => {
 
     // Response data
     const data = {
-        color: '#FF0000',
+        color: '#a13d2d',
     }
 
     return response.json(data)
 })
+
+// MATH
+// ----
+// Fundamental math and functions, this makes code 
+// easier to reason about.
+function make_point(x, y) { return {x, y}; }
+function make_vector(x, y) { return {x, y}; }
+function make_direction(x, y) { return make_vector(x,y); }
+
+// Translates a point along a vector.
+function translate(pt, vec) { 
+    return make_point(pt['x']+vec['x'], pt['y']+vec['y']); 
+}
+
+// Given two points a,b return the vector v that
+// points to b, so that:
+//  a + v = b
+function point_to_vector(a, b){
+    return make_vector(b['x']-a['x'], b['y']-a['y']);
+}
+
+// Given two vectors v0, v1, return their dot product.
+function dot(v0, v1) {
+    return v0['x'] * v1['x'] + v0['y'] * v1['y'];
+}
+
+// The 4 cardinal directions:
+// right, up, left, down
+Cardinals = [
+      make_direction(1,0)
+    , make_direction(0,1)
+    , make_direction(-1,0)
+    , make_direction(0,-1)
+];
+
+
+// Battlesnake helpers
+// -------------------
+function get_snake_dir(snake_body) {
+    head = snake_body[0];
+    neck = snake_body[1];
+    return point_to_vector(neck, head);
+}
+
+function inside_walls(pt, gameState) {
+    return  pt.x >=0 && pt.x < gameState.width &&
+            pt.y >=0 && pt.y < gameState.height;
+}
+
+// Convert math direction into move strings.
+function direction_to_move(dir) {
+    if (dir['x'] < 0)
+        return 'left';
+    if (dir['x'] > 0)
+        return 'right';
+    if (dir['y'] > 0)
+        return 'down';
+    return 'up';
+}
 
 function print_game_state(gameState) {
 
@@ -62,8 +120,12 @@ function print_game_state(gameState) {
         }
         process.stdout.write("\n");
     }
+    var dir = get_snake_dir(gameState.you.body);
+    console.log(`You are pointing (${dir.x}, ${dir.y}), which is ${direction_to_move(dir)}`);
     // console.log(board);
 }
+
+// Battlesnake entry point
 
 // Handle POST request to '/move'
 app.post('/move', (request, response) => {
