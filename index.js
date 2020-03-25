@@ -9,6 +9,9 @@ const {
     poweredByHandler
 } = require('./handlers.js')
 
+// Functional programming!
+var _ = require('underscore');
+
 // For deployment to Heroku, the port needs to be set using ENV, so
 // we check for the port number in process.env
 app.set('port', (process.env.PORT || 9001))
@@ -58,7 +61,7 @@ function dot(v0, v1) {
 }
 
 // The 4 cardinal directions:
-// right, up, left, down
+// right, down, left, up
 Cardinals = [
       make_direction(1,0)
     , make_direction(0,1)
@@ -66,6 +69,69 @@ Cardinals = [
     , make_direction(0,-1)
 ];
 
+function print_dirs(dirs) {
+    if (dirs.length) {
+        _.each(dirs, function(dir){ 
+            var move = direction_to_move(dir);
+            process.stdout.write(`${move}: ${dir.x}, ${dir.y}\n`); 
+        });
+    } else {
+        console.log("[]"); 
+    }
+}
+
+// Sanguine logic
+// --------------
+
+// Given a game state, and potential directions, return a new
+// array of directions that avoids running into a wall. 
+function avoid_walls(gameState, dirs) {
+    head = gameState.you.body[0];
+
+    new_dirs = _.filter(dirs, function(dir){ return inside_walls(translate(head, dir), gameState); });
+
+    if (!_.isEqual(new_dirs, dirs)) {
+        process.stdout.write("Snake avoiding wall, valid dirs:\n");
+        print_dirs(new_dirs);
+    }
+    return new_dirs;
+}
+
+function inside_snake(pt, snake_body) {
+    // console.log("inside snake:", pt, snake_body);
+    var found = _.find(snake_body, function(seg){ 
+        return pt.x == seg.x &&
+               pt.y == seg.y; 
+    });
+    // console.log("found:", found);
+    return found != undefined; 
+}
+
+// Given a game state, and potential directions, return a new
+// array of directions that a snake avoids running into its self.
+function avoid_self(gameState, dirs) {
+    var head = _.first(gameState.you.body);
+    var body = _.rest(gameState.you.body);
+    // console.log("head:", head);
+    // console.log("body:", body);
+
+    // If the new head position is in the body, then 
+    // remove the new direction. 
+    var new_dirs = _.reject(dirs, function(dir){ 
+        var new_head = translate(head, dir);
+        // console.log("new head:", new_head);
+        var inside = inside_snake(new_head, body);
+        // console.log("inside:", inside);
+        // process.stdout.write(`new head ${inside}: ${new_head.x}, ${new_head.y}\n`);
+        return inside;
+    });
+
+    if (!_.isEqual(new_dirs, dirs)) {
+        process.stdout.write("Snake avoiding self, valid dirs:\n");
+        print_dirs(new_dirs);
+    }
+    return new_dirs;
+}
 
 // Battlesnake helpers
 // -------------------
@@ -143,9 +209,25 @@ app.post('/move', (request, response) => {
 
     print_game_state(gameState);
 
+    snake_dir = get_snake_dir(gameState.you.body);
+    possible_dirs = Cardinals;
+
+    var dirs = avoid_walls(gameState, possible_dirs);
+    dirs = avoid_self(gameState, dirs);
+
+    if (dirs.length == 0) {
+        console.log("No valid moves!");
+        throw "No valid moves!"
+    };
+
+    var rand_dir = _.sample(dirs);
+    var move = direction_to_move(rand_dir);
+    console.log(`random move ${move}`);
+
     // Response data
     const data = {
-        move: 'up', // one of: ['up','down','left','right']
+        // move: 'up', // one of: ['up','down','left','right']
+        move
     }
 
     //   console.log(request.body.board);
