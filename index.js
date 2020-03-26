@@ -107,6 +107,26 @@ function inside_snake(pt, snake_body) {
     return found != undefined; 
 }
 
+function avoid_snake(head, snake_body, dirs) {
+    // If the new head position is in the body, then 
+    // remove the new direction. 
+    var new_dirs = _.reject(dirs, function(dir){ 
+        var new_head = translate(head, dir);
+        // console.log("new head:", new_head);
+        var inside = inside_snake(new_head, snake_body);
+        // console.log("inside:", inside);
+        // process.stdout.write(`new head ${inside}: ${new_head.x}, ${new_head.y}\n`);
+        return inside;
+    });
+
+    if (!_.isEqual(new_dirs, dirs)) {
+        process.stdout.write("Snake avoiding snake body, valid dirs:\n");
+        print_dirs(new_dirs);
+    }
+
+    return new_dirs;
+}
+
 // Given a game state, and potential directions, return a new
 // array of directions that a snake avoids running into its self.
 function avoid_self(gameState, dirs) {
@@ -115,20 +135,10 @@ function avoid_self(gameState, dirs) {
     // console.log("head:", head);
     // console.log("body:", body);
 
-    // If the new head position is in the body, then 
-    // remove the new direction. 
-    var new_dirs = _.reject(dirs, function(dir){ 
-        var new_head = translate(head, dir);
-        // console.log("new head:", new_head);
-        var inside = inside_snake(new_head, body);
-        // console.log("inside:", inside);
-        // process.stdout.write(`new head ${inside}: ${new_head.x}, ${new_head.y}\n`);
-        return inside;
-    });
+    var new_dirs = avoid_snake(head, body, dirs);
 
     if (!_.isEqual(new_dirs, dirs)) {
-        process.stdout.write("Snake avoiding self, valid dirs:\n");
-        print_dirs(new_dirs);
+        process.stdout.write("(Snake avoiding self).\n");
     }
     return new_dirs;
 }
@@ -214,6 +224,11 @@ app.post('/move', (request, response) => {
 
     var dirs = avoid_walls(gameState, possible_dirs);
     dirs = avoid_self(gameState, dirs);
+
+    var head = _.first(gameState.you.body)
+    for (const snake of gameState.snakes) {
+        dirs = avoid_snake(head, snake.body, dirs);
+    }
 
     if (dirs.length == 0) {
         console.log("No valid moves!");
